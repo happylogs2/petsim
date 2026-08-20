@@ -1,0 +1,14 @@
+[
+  {
+    "serial": "127.0.0.1:5555",
+    "account_name": "Farm-01",
+    "roblox_username": "your_roblox_username_1",
+    "zone_config": "config/zones/zone1.json"
+  },
+  {
+    "serial": "127.0.0.1:5557",
+    "account_name": "Farm-02",
+    "roblox_username": "your_roblox_username_2",
+    "zone_config": "config/zones/zone1.json"
+  }
+]

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farm Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14171c;
+    --card: #1b1f27;
+    --card-border: #262b35;
+    --text: #e7e9ee;
+    --text-dim: #8a90a0;
+    --accent: #5eead4;
+    --amber: #f4b860;
+    --slate: #4b5263;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    padding: 32px 24px 64px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto 28px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  h1 span { color: var(--accent); }
+  #summary {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .fleet-bar {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .fleet-pill {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 110px;
+  }
+  .fleet-pill .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+  }
+  .fleet-pill .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+  }
+  .fleet-pill.diamonds .value { color: var(--accent); }
+  .fleet-pill.traveling .value { color: var(--amber); }
+  .fleet-pill.transitioning .value { color: var(--accent); }
+  .fleet-pill.waiting .value { color: var(--slate); }
+  .grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--slate);
+  }
+  .card.state-waiting::before { background: var(--slate); }
+  .card.state-traveling::before { background: var(--amber); }
+  .card.state-transitioning::before { background: var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .account-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .username {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .state-badge {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: #262b35;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .state-waiting .state-badge { color: var(--slate); }
+  .state-traveling .state-badge { color: var(--amber); }
+  .state-transitioning .state-badge { color: var(--accent); }
+
+  .zone {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .zone b { color: var(--text); font-weight: 500; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 5px 0;
+    border-top: 1px solid var(--card-border);
+  }
+  .stat-row:first-of-type { border-top: none; padding-top: 0; }
+  .stat-label { color: var(--text-dim); }
+  .stat-value { color: var(--text); font-weight: 500; }
+  .stat-value.diamonds { color: var(--accent); }
+
+  .fetched-at {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .empty {
+    max-width: 1200px;
+    margin: 60px auto;
+    text-align: center;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>ps99<span>farm</span></h1>
+    <div id="summary"></div>
+  </header>
+  <div class="fleet-bar" id="fleetBar"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">no accounts reporting yet</div>
+
+<script>
+function formatNum(n) {
+  if (n === null || n === undefined) return "\u2014";
+  const units = [
+    [1e15, "q"], [1e12, "t"], [1e9, "b"], [1e6, "m"], [1e3, "k"]
+  ];
+  for (const [threshold, suffix] of units) {
+    if (n >= threshold) return (n / threshold).toFixed(2).replace(/\.?0+$/, "") + suffix;
+  }
+  return String(n);
+}
+
+function relTime(unixSeconds) {
+  if (!unixSeconds) return "never";
+  const diff = Date.now() / 1000 - unixSeconds;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  return Math.floor(diff / 3600) + "h ago";
+}
+
+const STATE_LABELS = {
+  WAITING_FOR_UNLOCK: "waiting",
+  TRAVELING_TO_PORTAL: "traveling",
+  TRANSITIONING: "loading",
+};
+const STATE_CLASS = {
+  WAITING_FOR_UNLOCK: "state-waiting",
+  TRAVELING_TO_PORTAL: "state-traveling",
+  TRANSITIONING: "state-transitioning",
+};
+
+async function refresh() {
+  let accounts = [];
+  try {
+    const res = await fetch("/api/status");
+    accounts = await res.json();
+  } catch (e) {
+    document.getElementById("summary").textContent = "connection lost";
+    return;
+  }
+
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+  document.getElementById("summary").textContent = `${accounts.length} accounts`;
+
+  const totalDiamonds = accounts.reduce((sum, a) => sum + (a.diamonds || 0), 0);
+  const counts = { WAITING_FOR_UNLOCK: 0, TRAVELING_TO_PORTAL: 0, TRANSITIONING: 0 };
+  accounts.forEach(a => { if (a.bot_state in counts) counts[a.bot_state]++; });
+
+  document.getElementById("fleetBar").innerHTML = `
+    <div class="fleet-pill diamonds">
+      <div class="label">total diamonds</div>
+      <div class="value">${formatNum(totalDiamonds)}</div>
+    </div>
+    <div class="fleet-pill waiting">
+      <div class="label">waiting</div>
+      <div class="value">${counts.WAITING_FOR_UNLOCK}</div>
+    </div>
+    <div class="fleet-pill traveling">
+      <div class="label">traveling</div>
+      <div class="value">${counts.TRAVELING_TO_PORTAL}</div>
+    </div>
+    <div class="fleet-pill transitioning">
+      <div class="label">loading</div>
+      <div class="value">${counts.TRANSITIONING}</div>
+    </div>
+  `;
+
+  if (accounts.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  grid.innerHTML = accounts.map(a => {
+    const stateClass = STATE_CLASS[a.bot_state] || "state-waiting";
+    const stateLabel = STATE_LABELS[a.bot_state] || "unknown";
+    const coinEntries = Object.entries(a.coins || {});
+    const coinRows = coinEntries.slice(0, 2).map(([name, val]) =>
+      `<div class="stat-row"><span class="stat-label">${name}</span><span class="stat-value">${formatNum(val)}</span></div>`
+    ).join("");
+
+    return `
+      <div class="card ${stateClass}">
+        <div class="card-top">
+          <div>
+            <div class="account-name">${a.account_name || a.serial}</div>
+            <div class="username">@${a.roblox_username || "unlinked"}</div>
+          </div>
+          <div class="state-badge">${stateLabel}</div>
+        </div>
+        <div class="zone">zone: <b>${a.current_zone || "\u2014"}</b></div>
+        <div class="stat-row">
+          <span class="stat-label">diamonds</span>
+          <span class="stat-value diamonds">${formatNum(a.diamonds)}</span>
+        </div>
+        ${coinRows}
+        ${a.rank !== null && a.rank !== undefined ? `<div class="stat-row"><span class="stat-label">rank</span><span class="stat-value">${a.rank}</span></div>` : ""}
+        <div class="fetched-at">stats ${relTime(a.stats_fetched_at)} \u00b7 bot ${relTime(a.bot_updated_at)}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

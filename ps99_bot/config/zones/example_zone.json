@@ -1,0 +1,13 @@
+{
+  "zone_name": "Zone 5 - Example",
+  "portal_check_region": [0, 0, 100, 100],
+  "unlocked_template_path": "config/templates/portal_unlocked.png",
+  "match_threshold": 0.85,
+  "waypoints": [
+    {"action": "hold_joystick", "center": [100, 500], "offset": [80, 0], "duration": 2.5},
+    {"action": "wait", "seconds": 0.5},
+    {"action": "tap", "pos": [640, 360]}
+  ],
+  "transition_wait_s": 4.0,
+  "next_zone_config": "config/zones/zone2.json"
+}
